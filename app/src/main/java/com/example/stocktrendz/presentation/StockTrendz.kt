@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.translate
 import com.example.stocktrendz.data.model.Bar
 import kotlin.math.roundToInt
 
@@ -25,9 +26,25 @@ fun StockTrendz(barsList: List<Bar>) {
         mutableStateOf(100)
     }
 
-    val transformableState = TransformableState { zoomChange, _, _ ->
+    var scrolledBy by remember {
+        mutableStateOf(0f)
+    }
+
+    var barWidth by remember {
+        mutableStateOf(0f)
+    }
+
+    var screenWidth by remember {
+        mutableStateOf(0f)
+    }
+
+    val transformableState = TransformableState { zoomChange, panChange, _ ->
         visibleBarsCount = (visibleBarsCount / zoomChange).roundToInt()
             .coerceIn(MIN_VISIBLE_BARS_COUNT, barsList.size)
+
+        scrolledBy = (scrolledBy + panChange.x)
+            .coerceAtLeast(0f)
+            .coerceAtMost(barsList.size * barWidth - screenWidth)
     }
 
     Canvas(
@@ -36,18 +53,28 @@ fun StockTrendz(barsList: List<Bar>) {
             .background(Color.Black)
             .transformable(transformableState)
     ) {
+        screenWidth = size.width
         val max = barsList.maxOf { it.high }
         val min = barsList.minOf { it.low }
-        val barWidth = size.width / visibleBarsCount
+        barWidth = size.width / visibleBarsCount
         val pxPerPoint = size.height / (max - min)
-        barsList.take(visibleBarsCount).forEachIndexed { index, bar ->
-            val offsetX = size.width - index * barWidth
-            drawLine(
-                color = Color.White,
-                start = Offset(offsetX, size.height - ((bar.low - min) * pxPerPoint)),
-                end = Offset(offsetX, size.height - ((bar.high - min) * pxPerPoint)),
-                strokeWidth = 1f
-            )
+
+        translate(left = scrolledBy) {
+            barsList.forEachIndexed { index, bar ->
+                val offsetX = size.width - index * barWidth
+                drawLine(
+                    color = Color.White,
+                    start = Offset(offsetX, size.height - ((bar.low - min) * pxPerPoint)),
+                    end = Offset(offsetX, size.height - ((bar.high - min) * pxPerPoint)),
+                    strokeWidth = 1f
+                )
+                drawLine(
+                    color = if (bar.open < bar.close) Color.Green else Color.Red,
+                    start = Offset(offsetX, size.height - ((bar.open - min) * pxPerPoint)),
+                    end = Offset(offsetX, size.height - ((bar.close - min) * pxPerPoint)),
+                    strokeWidth = barWidth / 2
+                )
+            }
         }
     }
 }
