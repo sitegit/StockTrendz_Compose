@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">StockTrendz</string>
+
+    <string name="time_frame_min_5">M5</string>
+    <string name="time_frame_min_15">M15</string>
+    <string name="time_frame_min_30">M30</string>
+    <string name="time_frame_hour_1">H1</string>
+    <string name="replay">Повторить</string>
+    <string name="to_many_request">Превышено количество запросов, повторите попытку позже</string>
+    <string name="loading_failed">Не удалось загрузить данные</string>
 </resources>

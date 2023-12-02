@@ -6,5 +6,9 @@ sealed class StockTrendzScreenState {
 
     object Initial : StockTrendzScreenState()
 
-    data class Content(val barList: List<Bar>) : StockTrendzScreenState()
+    object Loading : StockTrendzScreenState()
+
+    data class Error(val message: String? = null) : StockTrendzScreenState()
+
+    data class Content(val barList: List<Bar>, val timeFrame: TimeFrame) : StockTrendzScreenState()
 }

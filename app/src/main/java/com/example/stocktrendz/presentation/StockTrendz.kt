@@ -1,14 +1,26 @@
 package com.example.stocktrendz.presentation
 
+import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
@@ -17,6 +29,8 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -24,7 +38,8 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.stocktrendz.data.model.Bar
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.stocktrendz.R
 import kotlin.math.roundToInt
 
 private const val MIN_VISIBLE_BARS_COUNT = 20
@@ -32,46 +47,122 @@ private const val MIN_VISIBLE_BARS_COUNT = 20
 @Composable
 fun StockTrendz(
     modifier: Modifier = Modifier,
-    barsList: List<Bar>
+    apiKey: String
 ) {
 
-    var stockTrendzState by rememberStockTrendzState(barsList = barsList)
-
-    Chart(
-        modifier = modifier,
-        stockTrendzState = stockTrendzState,
-        onStockTrendzStateChanged = {
-            stockTrendzState = it
-        }
+    val viewModel: StockTrendzViewModel = viewModel(
+        factory = StockTrendzViewModelFactory(apiKey)
     )
+    val screenState = viewModel.state.collectAsState()
 
-    barsList.firstOrNull()?.let {
-        Prices(
-            modifier = modifier,
-            max = stockTrendzState.max,
-            min = stockTrendzState.min,
-            pxPerPoint = stockTrendzState.pxPerPoint,
-            lastPrice = it.close
-        )
+    when(val currentState = screenState.value) {
+        is StockTrendzScreenState.Initial -> {}
+        is StockTrendzScreenState.Content -> {
+            val stockTrendzState = rememberStockTrendzState(barsList = currentState.barList)
+
+            Chart(
+                modifier = modifier,
+                stockTrendzState = stockTrendzState,
+                onStockTrendzStateChanged = {
+                    stockTrendzState.value = it
+                }
+            )
+
+            currentState.barList.firstOrNull()?.let {
+                Prices(
+                    modifier = modifier,
+                    stockTrendzState = stockTrendzState,
+                    lastPrice = it.close
+                )
+            }
+
+            TimeFrames(selectedFrame = currentState.timeFrame) {
+                viewModel.loadBarsList(it)
+            }
+        }
+        is StockTrendzScreenState.Loading -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color.White)
+            }
+        }
+        is StockTrendzScreenState.Error -> {
+            val message = if (currentState.message == "HttpException")
+                stringResource(R.string.to_many_request)
+            else
+                stringResource(R.string.loading_failed)
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                if (currentState.message != "HttpException") {
+                    Button(onClick = { viewModel.loadBarsList() }) {
+                        Text(text = stringResource(R.string.replay))
+                    }
+                }
+            }
+            Toast.makeText(LocalContext.current, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimeFrames(
+    selectedFrame: TimeFrame,
+    onTimeFrameSelected: (TimeFrame) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .wrapContentSize()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        TimeFrame.values().forEach { timeFrame ->
+            val labelResId = when(timeFrame) {
+                TimeFrame.MIN_5 -> R.string.time_frame_min_5
+                TimeFrame.MIN_15 -> R.string.time_frame_min_15
+                TimeFrame.MIN_30 -> R.string.time_frame_min_30
+                TimeFrame.HOUR_1 -> R.string.time_frame_hour_1
+            }
+            val isSelected = timeFrame == selectedFrame
+            AssistChip(
+                onClick = { if (!isSelected) onTimeFrameSelected(timeFrame) },
+                label = { Text(text = stringResource(id = labelResId)) },
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = if (isSelected) Color.White else Color.Black,
+                    labelColor = if (isSelected) Color.Black else Color.White
+                )
+            )
+        }
     }
 }
 
 @Composable
 private fun Chart(
     modifier: Modifier = Modifier,
-    stockTrendzState: StockTrendzState,
+    stockTrendzState: State<StockTrendzState>,
     onStockTrendzStateChanged: (StockTrendzState) -> Unit
 ) {
-    val transformableState = rememberTransformableState { zoomChange, panChange, _ ->
-        val visibleBarsCount = (stockTrendzState.visibleBarsCount / zoomChange).roundToInt()
-            .coerceIn(MIN_VISIBLE_BARS_COUNT, stockTrendzState.barsList.size)
+    val currentState = stockTrendzState.value
 
-        val scrolledBy = (stockTrendzState.scrolledBy + panChange.x)
+    val transformableState = rememberTransformableState { zoomChange, panChange, _ ->
+        val visibleBarsCount = (currentState.visibleBarsCount / zoomChange).roundToInt()
+            .coerceIn(MIN_VISIBLE_BARS_COUNT, currentState.barsList.size)
+
+        val scrolledBy = (currentState.scrolledBy + panChange.x)
             .coerceAtLeast(0f)
-            .coerceAtMost(stockTrendzState.barsList.size * stockTrendzState.barWidth - stockTrendzState.screenWidth)
+            .coerceAtMost(currentState.barsList.size * currentState.barWidth - currentState.screenWidth)
 
         onStockTrendzStateChanged(
-            stockTrendzState.copy(
+            currentState.copy(
                 visibleBarsCount = visibleBarsCount,
                 scrolledBy = scrolledBy
             )
@@ -91,19 +182,19 @@ private fun Chart(
             .transformable(transformableState)
             .onSizeChanged {
                 onStockTrendzStateChanged(
-                    stockTrendzState.copy(
+                    currentState.copy(
                         screenWidth = it.width.toFloat(),
                         screenHeight = it.height.toFloat()
                     )
                 )
             }
     ) {
-        val min = stockTrendzState.min
-        val pxPerPoint = stockTrendzState.pxPerPoint
+        val min = currentState.min
+        val pxPerPoint = currentState.pxPerPoint
 
-        translate(left = stockTrendzState.scrolledBy) {
-            stockTrendzState.barsList.forEachIndexed { index, bar ->
-                val offsetX = size.width - index * stockTrendzState.barWidth
+        translate(left = currentState.scrolledBy) {
+            currentState.barsList.forEachIndexed { index, bar ->
+                val offsetX = size.width - index * currentState.barWidth
                 drawLine(
                     color = Color.White,
                     start = Offset(offsetX, size.height - ((bar.low - min) * pxPerPoint)),
@@ -114,7 +205,7 @@ private fun Chart(
                     color = if (bar.open < bar.close) Color.Green else Color.Red,
                     start = Offset(offsetX, size.height - ((bar.open - min) * pxPerPoint)),
                     end = Offset(offsetX, size.height - ((bar.close - min) * pxPerPoint)),
-                    strokeWidth = stockTrendzState.barWidth / 2
+                    strokeWidth = currentState.barWidth / 2
                 )
             }
         }
@@ -125,12 +216,15 @@ private fun Chart(
 @Composable
 private fun Prices(
     modifier: Modifier = Modifier,
-    max: Float,
-    min: Float,
-    pxPerPoint: Float,
-    lastPrice: Float,
+    stockTrendzState: State<StockTrendzState>,
+    lastPrice: Float
 ) {
+    val currentState = stockTrendzState.value
     val textMeasurer = rememberTextMeasurer()
+
+    val max = currentState.max
+    val min = currentState.min
+    val pxPerPoint = currentState.pxPerPoint
 
     Canvas(
         modifier = modifier

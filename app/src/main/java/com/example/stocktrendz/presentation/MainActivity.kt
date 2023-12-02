@@ -1,11 +1,8 @@
 package com.example.stocktrendz.presentation
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.collectAsState
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.stocktrendz.ui.theme.StockTrendzTheme
 import java.util.Properties
 
@@ -14,17 +11,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             StockTrendzTheme {
-                val viewModel: StockTrendzViewModel = viewModel(
-                    factory = StockTrendzViewModelFactory(loadApiKey())
-                )
-                val screenState = viewModel.state.collectAsState()
-
-                when(val currentState = screenState.value) {
-                    is StockTrendzScreenState.Initial -> {}
-                    is StockTrendzScreenState.Content -> {
-                        StockTrendz(barsList = currentState.barList)
-                    }
-                }
+                StockTrendz(apiKey = loadApiKey())
             }
         }
     }
