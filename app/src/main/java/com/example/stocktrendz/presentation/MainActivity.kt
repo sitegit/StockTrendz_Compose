@@ -22,8 +22,7 @@ class MainActivity : ComponentActivity() {
                 when(val currentState = screenState.value) {
                     is StockTrendzScreenState.Initial -> {}
                     is StockTrendzScreenState.Content -> {
-                        Log.d("MyTag", currentState.barList.toString())
-                        StockTrendz(currentState.barList)
+                        StockTrendz(barsList = currentState.barList)
                     }
                 }
             }
