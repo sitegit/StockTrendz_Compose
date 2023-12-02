@@ -2,7 +2,7 @@ package com.example.stocktrendz.presentation
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.TransformableState
+import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -10,53 +10,99 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.stocktrendz.data.model.Bar
 import kotlin.math.roundToInt
 
 private const val MIN_VISIBLE_BARS_COUNT = 20
 
 @Composable
-fun StockTrendz(barsList: List<Bar>) {
+fun StockTrendz(
+    modifier: Modifier = Modifier,
+    barsList: List<Bar>
+) {
 
     var stockTrendzState by rememberStockTrendzState(barsList = barsList)
 
-    val transformableState = TransformableState { zoomChange, panChange, _ ->
+    Chart(
+        modifier = modifier,
+        stockTrendzState = stockTrendzState,
+        onStockTrendzStateChanged = {
+            stockTrendzState = it
+        }
+    )
+
+    barsList.firstOrNull()?.let {
+        Prices(
+            modifier = modifier,
+            max = stockTrendzState.max,
+            min = stockTrendzState.min,
+            pxPerPoint = stockTrendzState.pxPerPoint,
+            lastPrice = it.close
+        )
+    }
+}
+
+@Composable
+private fun Chart(
+    modifier: Modifier = Modifier,
+    stockTrendzState: StockTrendzState,
+    onStockTrendzStateChanged: (StockTrendzState) -> Unit
+) {
+    val transformableState = rememberTransformableState { zoomChange, panChange, _ ->
         val visibleBarsCount = (stockTrendzState.visibleBarsCount / zoomChange).roundToInt()
-            .coerceIn(MIN_VISIBLE_BARS_COUNT, barsList.size)
+            .coerceIn(MIN_VISIBLE_BARS_COUNT, stockTrendzState.barsList.size)
 
         val scrolledBy = (stockTrendzState.scrolledBy + panChange.x)
             .coerceAtLeast(0f)
-            .coerceAtMost(barsList.size * stockTrendzState.barWidth - stockTrendzState.screenWidth)
+            .coerceAtMost(stockTrendzState.barsList.size * stockTrendzState.barWidth - stockTrendzState.screenWidth)
 
-        stockTrendzState = stockTrendzState.copy(
-            visibleBarsCount = visibleBarsCount,
-            scrolledBy = scrolledBy
+        onStockTrendzStateChanged(
+            stockTrendzState.copy(
+                visibleBarsCount = visibleBarsCount,
+                scrolledBy = scrolledBy
+            )
         )
     }
 
     Canvas(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
-            .padding(vertical = 32.dp)
+            .clipToBounds()
+            .padding(
+                top = 32.dp,
+                bottom = 32.dp,
+                end = 16.dp
+            )
             .transformable(transformableState)
             .onSizeChanged {
-                stockTrendzState.screenWidth = it.width.toFloat()
+                onStockTrendzStateChanged(
+                    stockTrendzState.copy(
+                        screenWidth = it.width.toFloat(),
+                        screenHeight = it.height.toFloat()
+                    )
+                )
             }
     ) {
-        val max = stockTrendzState.visibleBars.maxOf { it.high }
-        val min = stockTrendzState.visibleBars.minOf { it.low }
-        val pxPerPoint = size.height / (max - min)
+        val min = stockTrendzState.min
+        val pxPerPoint = stockTrendzState.pxPerPoint
 
         translate(left = stockTrendzState.scrolledBy) {
-            barsList.forEachIndexed { index, bar ->
+            stockTrendzState.barsList.forEachIndexed { index, bar ->
                 val offsetX = size.width - index * stockTrendzState.barWidth
                 drawLine(
                     color = Color.White,
@@ -72,36 +118,95 @@ fun StockTrendz(barsList: List<Bar>) {
                 )
             }
         }
-
-        barsList.firstOrNull()?.let {
-            drawPrices(
-                min = min,
-                pxPerPoint = pxPerPoint,
-                lastPrice = it.close
-            )
-        }
     }
 }
 
-private fun DrawScope.drawPrices(
+@OptIn(ExperimentalTextApi::class)
+@Composable
+private fun Prices(
+    modifier: Modifier = Modifier,
+    max: Float,
     min: Float,
     pxPerPoint: Float,
-    lastPrice: Float
+    lastPrice: Float,
+) {
+    val textMeasurer = rememberTextMeasurer()
+
+    Canvas(
+        modifier = modifier
+            .fillMaxSize()
+            .clipToBounds()
+            .padding(vertical = 32.dp)
+    ) {
+        drawPrices(
+            max = max,
+            min = min,
+            pxPerPoint = pxPerPoint,
+            lastPrice = lastPrice,
+            textMeasurer = textMeasurer
+        )
+    }
+}
+
+@OptIn(ExperimentalTextApi::class)
+private fun DrawScope.drawPrices(
+    max: Float,
+    min: Float,
+    pxPerPoint: Float,
+    lastPrice: Float,
+    textMeasurer: TextMeasurer
 ) {
     //max
+    val maxPriceOffsetY = 0f
     drawDashedLine(
-        start = Offset(0f, 0f),
-        end = Offset(size.width, 0f)
+        start = Offset(0f, maxPriceOffsetY),
+        end = Offset(size.width, maxPriceOffsetY)
+    )
+    drawTextPrice(
+        textMeasurer = textMeasurer,
+        price = max,
+        offsetY = maxPriceOffsetY
     )
     //lastPrice
+    val lastPriceOffsetY = size.height - ((lastPrice - min) * pxPerPoint)
     drawDashedLine(
-        start = Offset(0f, size.height - ((lastPrice - min) * pxPerPoint)),
-        end = Offset(size.width, size.height - ((lastPrice - min) * pxPerPoint))
+        start = Offset(0f, lastPriceOffsetY),
+        end = Offset(size.width, lastPriceOffsetY)
+    )
+    drawTextPrice(
+        textMeasurer = textMeasurer,
+        price = lastPrice,
+        offsetY = lastPriceOffsetY
     )
     //min
+    val minPriceOffsetY = size.height
     drawDashedLine(
-        start = Offset(0f, size.height),
-        end = Offset(size.width, size.height)
+        start = Offset(0f, minPriceOffsetY),
+        end = Offset(size.width, minPriceOffsetY)
+    )
+    drawTextPrice(
+        textMeasurer = textMeasurer,
+        price = min,
+        offsetY = minPriceOffsetY
+    )
+}
+
+@OptIn(ExperimentalTextApi::class)
+private fun DrawScope.drawTextPrice(
+    textMeasurer: TextMeasurer,
+    price: Float,
+    offsetY: Float,
+) {
+    val textLayoutResult = textMeasurer.measure(
+        text = price.toString(),
+        style = TextStyle(
+            color = Color.White,
+            fontSize = 12.sp
+        )
+    )
+    drawText(
+        textLayoutResult = textLayoutResult,
+        topLeft = Offset(size.width - (textLayoutResult.size.width + 5.dp.toPx()), offsetY)
     )
 }
 

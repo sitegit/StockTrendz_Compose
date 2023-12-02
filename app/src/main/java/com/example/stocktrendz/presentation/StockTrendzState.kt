@@ -14,18 +14,26 @@ data class StockTrendzState(
     val barsList: List<Bar>,
     val visibleBarsCount: Int = 100,
     val scrolledBy: Float = 0f,
-    var screenWidth: Float = 0f
+    val screenWidth: Float = 1f,
+    val screenHeight: Float = 1f
 ) : Parcelable {
 
     val barWidth: Float
         get() = screenWidth / visibleBarsCount
 
-    val visibleBars: List<Bar>
+    private val visibleBars: List<Bar>
         get() {
             val startIndex = (scrolledBy / barWidth).roundToInt().coerceAtLeast(0)
             val endIndex = (startIndex + visibleBarsCount).coerceAtMost(barsList.size)
             return barsList.subList(startIndex, endIndex)
         }
+
+    val max: Float
+        get() = visibleBars.maxOf { it.high }
+    val min: Float
+        get() = visibleBars.minOf { it.low }
+    val pxPerPoint: Float
+        get() = screenHeight / (max - min)
 }
 
 @Composable
