@@ -19,3 +19,4 @@
 ![Screenshot_20231216_070256_StockTrendz](https://github.com/sitegit/StockTrendz_Compose/assets/47815702/54d3fb4c-62be-4974-bfe5-c66674cea25f)
 ![Screenshot_20231216_070319_StockTrendz](https://github.com/sitegit/StockTrendz_Compose/assets/47815702/ae4e4f96-d35a-4512-b91b-736528ed3a97)
 
+
