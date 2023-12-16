@@ -15,8 +15,8 @@
 - Retrofit.
 
 ## Скриншоты
-![Screenshot_20231216_070239_StockTrendz](https://github.com/sitegit/StockTrendz_Compose/assets/47815702/69c09d47-a756-4086-a743-312745b437e7)
-![Screenshot_20231216_070256_StockTrendz](https://github.com/sitegit/StockTrendz_Compose/assets/47815702/54d3fb4c-62be-4974-bfe5-c66674cea25f)
-![Screenshot_20231216_070319_StockTrendz](https://github.com/sitegit/StockTrendz_Compose/assets/47815702/ae4e4f96-d35a-4512-b91b-736528ed3a97)
 
-
+![Screenshot_20231216_070239_StockTrendz](https://github.com/sitegit/StockTrendz_Compose/assets/47815702/d6fd20da-194f-47c3-a37e-104e20ec6fe2)
+![Screenshot_20231216_070256_StockTrendz](https://github.com/sitegit/StockTrendz_Compose/assets/47815702/6daf1d40-209a-438b-93a6-8420a73405c1)
+![Screenshot_20231216_070319_StockTrendz](https://github.com/sitegit/StockTrendz_Compose/assets/47815702/3eae7da4-2ac2-44a1-b221-37e5f7fd7ceb)
+![Screenshot_20231216_070529_StockTrendz](https://github.com/sitegit/StockTrendz_Compose/assets/47815702/c0bafb00-e4c6-4a8f-85c1-6642983e9130)
