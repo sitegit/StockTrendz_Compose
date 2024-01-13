@@ -20,3 +20,8 @@
 ![Screenshot_20231216_070256_StockTrendz](https://github.com/sitegit/StockTrendz_Compose/assets/47815702/6daf1d40-209a-438b-93a6-8420a73405c1)
 ![Screenshot_20231216_070319_StockTrendz](https://github.com/sitegit/StockTrendz_Compose/assets/47815702/3eae7da4-2ac2-44a1-b221-37e5f7fd7ceb)
 ![Screenshot_20231216_070529_StockTrendz](https://github.com/sitegit/StockTrendz_Compose/assets/47815702/c0bafb00-e4c6-4a8f-85c1-6642983e9130)
+
+## Инструкция по сборке проекта
+
+В папке assets необходимо создать файл config.properties и добавить туда ваш apikey в следующем формате:
+api_key=YOUR_API_KEY
