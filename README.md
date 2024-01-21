@@ -11,7 +11,6 @@
 ## Технологии
 - MVVM.
 - Jetpack Compose.
-- Custom View.
 - Retrofit.
 
 ## Скриншоты
